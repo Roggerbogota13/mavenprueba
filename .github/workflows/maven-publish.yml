@@ -76,7 +76,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: bogotarogger/app:latest
+          tags: secrets.USERNAME/app:latest
         
 
         
