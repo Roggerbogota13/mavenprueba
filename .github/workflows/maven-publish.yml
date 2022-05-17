@@ -23,7 +23,7 @@ jobs:
 
   publish-artifact:
     runs-on: ubuntu-latest
-    needs: [build]
+    needs: [unit-test]
     permissions: 
       contents: read
       packages: write
