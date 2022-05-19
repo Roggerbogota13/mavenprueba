@@ -84,13 +84,12 @@ jobs:
     - uses: actions/checkout@master
     - name: Setup Minikube
       id: minikube
-      uses: CodingNagger/minikube-setup-action@v1.16.0
-    - name: Launch Minikube
+      uses: CodingNagger/minikube-setup-action@v1.25.2
       run: eval ${{ steps.minikube.outputs.launcher }}
     - name: Install Nginx pod
       run: kubectl apply -f https://k8s.io/examples/application/deployment.yaml
     - name: Wait for pods
-      uses: CodingNagger/minikube-wait-action@v1.16.0
+      uses: CodingNagger/minikube-wait-action@v1.25.2
     - name: Check pods
       run: |
         kubectl get pods  
