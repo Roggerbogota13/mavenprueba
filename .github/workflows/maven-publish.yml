@@ -3,12 +3,20 @@
 
 name: Maven Package
 
+
+env:
+  AZURE_CONTAINER_REGISTRY: MY_REGISTRY_NAME # set this to the name of your container registry
+  PROJECT_NAME: MY_PROJECT_NAME              # set this to your project's name
+  RESOURCE_GROUP: MY_RESOURCE_GROUP          # set this to the resource group containing your AKS cluster
+  CLUSTER_NAME: MY_CLUSTER_NAME              # set this to the name of your AKS cluster
+  REGISTRY_URL: MY_REGISTRY_URL              # set this to the URL of your registry
+  # If you bake using helm:
+  CHART_PATH: MY_HELM_FILE                   # set this to the path to your helm file
+  CHART_OVERRIDE_PATH: MY_OVERRIDE_FILES 
+
 on:
   push:
     branches: [ main ]
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   unit-test:
@@ -38,13 +46,10 @@ jobs:
           distribution: 'adopt'
       - name: Set up Maven Settings for deploy
         uses: s4u/maven-settings-action@v2.1.1
-      - name: Publish package
-      #  run: mvn --batch-mode deploy
+      - name: Publish packag
         env:
           GITHUB_USERNAME: ${{ secrets.USERNAME }}
           GITHUB_TOKEN: ${{ secrets.TOKEN }}
-       # run: mvn --settings settings.xml --file pom.xml deploy
-       # run: mvn clean source:jar deploy -DuniqueVersion=false -Dmaven.source.useDefaultManifestFile=true -Dmaven.source.includePom=true -Dmaven.install.skip=true -DdeplyAtEnd=true -DaltDeploymentRepository='github::default::https://maven.pkg.github.com/jesusrh12/ffm-ne-back-jv-lib-commons'
         run: mvn source:jar deploy -DuniqueVersion=false -Dmaven.source.useDefaultManifestFile=true -Dmaven.source.includePom=true -DaltDeploymentRepository='github::default::https://maven.pkg.github.com/Roggerbogota13/mavenprueba'
         
   push_to_registries:
@@ -69,7 +74,52 @@ jobs:
         with:
           context: .
           push: true
-          tags: bogotarogger/prueba1:latest
+          tags: bogotarogger/prueba2:latest
 
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Azure Login
+      uses: azure/login@89d153571fe9a34ed70fcf9f1d95ab8debea7a73
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Build image on ACR
+      uses: azure/CLI@7378ce2ca3c38b4b063feb7a4cbe384fef978055
+      with:
+        azcliversion: 2.29.1
+        inlineScript: |
+          az configure --defaults acr=${{ env.AZURE_CONTAINER_REGISTRY }}
+          az acr build -t  -t ${{ env.REGISTRY_URL }}/${{ env.PROJECT_NAME }}:${{ github.sha }}
+
+    - name: Gets K8s context
+      uses: azure/aks-set-context@4e5aec273183a197b181314721843e047123d9fa
+      with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          resource-group: ${{ env.RESOURCE_GROUP }}
+          cluster-name: ${{ env.CLUSTER_NAME }}
+      id: login
+
+    - name: Configure deployment
+      uses: azure/k8s-bake@773b6144a3732e3bf4c78b146a0bb9617b2e016b
+      with:
+        renderEngine: 'helm'
+        helmChart: ${{ env.CHART_PATH }}
+        overrideFiles: ${{ env.CHART_OVERRIDE_PATH }}
+        overrides: |     
+          replicas:2
+        helm-version: 'latest' 
+      id: bake
+
+    - name: Deploys application
+    - uses: Azure/k8s-deploy@c8fbd76ededaad2799c054a9fd5d0fa5d4e9aee4
+      with:
+        manifests: ${{ steps.bake.outputs.manifestsBundle }}
+        images: |
+          ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.PROJECT_NAME }}:${{ github.sha }}
+        imagepullsecrets: |
+          ${{ env.PROJECT_NAME }}
 
   
