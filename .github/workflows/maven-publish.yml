@@ -107,8 +107,8 @@ jobs:
       - uses: docker/k8s-create-secret@v1.1
         with:
           container-registry-url: hub.docker.com
-          container-registry-username: ${{ secrets.REGISTRY_USERNAME }}
-          container-registry-password: ${{ secrets.REGISTRY_PASSWORD }}
+          container-registry-username: ${{ secrets.DOCKER_USERNAME }}
+          container-registry-password: ${{ secrets.DOCKER_PASSWORD }}
           secret-name: demo-k8s-secret
 
       - uses: Azure/k8s-deploy@v3.1
